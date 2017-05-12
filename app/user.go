@@ -28,6 +28,7 @@ import (
 	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/store"
 	"github.com/mattermost/platform/utils"
+	"github.com/timehop/go-mixpanel"
 )
 
 const (
@@ -200,6 +201,21 @@ func CreateUser(user *model.User) (*model.User, *model.AppError) {
 	if ruser, err := createUser(user); err != nil {
 		return nil, err
 	} else {
+		l4g.Debug("%v",ruser.Id)
+
+		mp := mixpanel.NewMixpanel("f56587e5f3b7d9fd1553dce84d41a18c")
+		props := map[string]interface{}{}
+		err := mp.Track(ruser.Id, "Signup", props)
+		if err != nil {
+			fmt.Println("Error occurred:", err)
+		}
+		op := &mixpanel.Operation{Name: "$set", Values: map[string]interface{}{}}
+		op.Values["$email"] = ruser.Email
+		op.Values["$name"] = ruser.Username
+		err2 := mp.Engage(ruser.Id, map[string]interface{}{}, op)
+		if err2 != nil {
+			fmt.Println("Error occurred:", err2)
+		}
 		// This message goes to everyone, so the teamId, channelId and userId are irrelevant
 		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_NEW_USER, "", "", "", nil)
 		message.Add("user_id", ruser.Id)

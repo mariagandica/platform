@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"time"
+	"fmt"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/dyatlov/go-opengraph/opengraph"
@@ -17,6 +18,7 @@ import (
 	"github.com/mattermost/platform/model"
 	"github.com/mattermost/platform/store"
 	"github.com/mattermost/platform/utils"
+	"github.com/timehop/go-mixpanel"
 )
 
 var (
@@ -122,6 +124,15 @@ func CreatePost(post *model.Post, teamId string, triggerWebhooks bool) (*model.P
 	if result := <-Srv.Store.Post().Save(post); result.Err != nil {
 		return nil, result.Err
 	} else {
+		l4g.Debug("%v",post.Id)
+		l4g.Debug("%v",post.UserId)
+
+		mp := mixpanel.NewMixpanel("f56587e5f3b7d9fd1553dce84d41a18c")
+		props := map[string]interface{}{}
+		err := mp.Track(post.UserId, "Post", props)
+		if err != nil {
+			fmt.Println("Error occurred:", err)
+		}
 		rpost = result.Data.(*model.Post)
 	}
 
@@ -351,6 +362,7 @@ func GetPostsPage(channelId string, page int, perPage int) (*model.PostList, *mo
 }
 
 func GetPosts(channelId string, offset int, limit int) (*model.PostList, *model.AppError) {
+
 	if result := <-Srv.Store.Post().GetPosts(channelId, offset, limit, true); result.Err != nil {
 		return nil, result.Err
 	} else {
